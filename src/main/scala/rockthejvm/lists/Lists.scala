@@ -13,6 +13,8 @@ sealed abstract class RList[+T] {
   def apply(index: Int): T
   def length: Int
   def reverse: RList[T]
+
+  def ::[S >: T](anotherList: RList[S]): RList[S]
 }
 
 case object RNil extends RList[Nothing] {
@@ -27,6 +29,8 @@ case object RNil extends RList[Nothing] {
   override def length: Int = 0
 
   override def reverse: RList[Nothing] = RNil
+
+  override def ::[S >: Nothing](anotherList: RList[S]): RList[S] = anotherList
 }
 
 // we can implement fields using "override val" for method parameters
@@ -74,7 +78,18 @@ case class ::[+T](override val head: T, override val tail: RList[T]) extends RLi
     // Complexity is O(N)
     reverseRec(this, RNil)
   }
+
+  override def ::[S >: T](anotherList: RList[S]): RList[S] = {
+    @tailrec
+    def concatRec(remaining: RList[S], accumulator: RList[S]): RList[S] = remaining match {
+      case _ if remaining.isEmpty => accumulator
+      case _ => concatRec(remaining.tail, remaining.head :: accumulator)
+    }
+    // Complexity is O(M + N) due ti reversing
+    concatRec(anotherList.reverse, this)
+  }
 }
+
 object RList {
   def from[T](iterable: Iterable[T]): RList[T] = {
     @tailrec
@@ -91,6 +106,8 @@ object RList {
 object Lists extends App {
   val aSmallList: RList[Int] = 1 :: 2 :: 3 :: 4 :: 5 :: 6 :: 7 :: 8 :: 9 :: 10 :: RNil
   val aLargeList: RList[Int] = RList.from(1 to 10000)
+  val aMediumList: RList[Int] = RList.from(11 to 20)
+
 
   println(aSmallList.apply(2))  // 3
   println(aSmallList.length)  // 10
@@ -100,4 +117,10 @@ object Lists extends App {
   println(aLargeList.apply(8735)) // 8736
   println(aLargeList.length) // 10000
   println(aLargeList.reverse) // [10000, 9999, 9998, 9997, 9996, 9995, 9994, 9993, 9992, 9991, 9990, 9989, 9988, 9987, 9986, 9985, ...]
+
+  println(aSmallList.::(aMediumList)) // [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  // left :: right, where :: is right-side function and it is equal to right.::(left)
+  println(aMediumList.::(aSmallList)) // [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+  println(aSmallList :: aMediumList) //  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+
 }
